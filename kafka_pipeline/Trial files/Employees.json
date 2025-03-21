@@ -1,0 +1,25 @@
+{
+    "employees": [
+        {
+            "id": 1,
+            "name": "Tom Hanks",
+            "position": "HR Manager",
+            "department": "HR",
+            "salary": 85000
+        },
+        {
+            "id": 2,
+            "name": "Emma Watson",
+            "position": "Software Developer",
+            "department": "IT",
+            "salary": 95000
+        },
+        {
+            "id": 3,
+            "name": "Will Smith",
+            "position": "Marketing Manager",
+            "department": "Marketing",
+            "salary": 78000
+        }
+    ]
+}

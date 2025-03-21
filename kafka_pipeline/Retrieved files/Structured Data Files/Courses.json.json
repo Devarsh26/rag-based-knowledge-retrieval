@@ -1,0 +1,3 @@
+[
+    "{\"courses\":[{\"course_id\":\"CS101\",\"credits\":3,\"instructor\":\"Dr. Brown\",\"title\":\"Introduction to Programming\"},{\"course_id\":\"MATH202\",\"credits\":4,\"instructor\":\"Prof. Green\",\"title\":\"Calculus II\"},{\"course_id\":\"PHYS301\",\"credits\":3,\"instructor\":\"Dr. White\",\"title\":\"Quantum Physics\"}]}"
+]

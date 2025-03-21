@@ -35,7 +35,7 @@ def search_similar_chunks(query, top_k=3):
         print("No FAISS index found!")
         return []
 
-    query_vector = model.encode(query)  # Encode query
+    query_vector = model.encode(query)
     print(f"Query Embedding Generated: {query_vector.shape}")
 
     distances, indices = index.search(np.array([query_vector], dtype=np.float32), top_k)
@@ -51,10 +51,10 @@ def search_similar_chunks(query, top_k=3):
 
         row_id = row_mapping[idx]  # Retrieve actual SQLite row ID
 
-        cursor.execute("SELECT original_doc_id, chunk_text FROM vector_store WHERE rowid = ?", (row_id,))
+        cursor.execute("SELECT original_doc_id, original_doc_name, chunk_text FROM vector_store WHERE rowid = ?", (row_id,))
         row = cursor.fetchone()
         if row:
-            results.append({"original_doc_id": row[0], "text": row[1]})
+            results.append({"original_doc_id": row[0], "original_doc_name": row[1], "text": row[2]})
 
     conn.close()
 
@@ -64,11 +64,12 @@ def search_similar_chunks(query, top_k=3):
     return results
 
 # Example Query
-query_text = "What are consequences of contract breach and the team values for the capstone project?"
+query_text = "What are the consequences of contract breach and secondly, what are timeline / milestones?"
 search_results = search_similar_chunks(query_text)
 
+# Print search results
 if search_results:
     for res in search_results:
-        print(f"\nFound in Document ID: {res['original_doc_id']}\n{res['text']}\n{'-'*40}")
+        print(f"\nFound in Document ID: {res['original_doc_id']} ({res['original_doc_name']})\n{res['text']}\n{'-'*40}")
 else:
     print("No matching results found!")

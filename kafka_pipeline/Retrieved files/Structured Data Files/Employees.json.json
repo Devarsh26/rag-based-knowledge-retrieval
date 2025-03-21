@@ -1,0 +1,3 @@
+[
+    "{\"employees\":[{\"department\":\"HR\",\"id\":1,\"name\":\"Tom Hanks\",\"position\":\"HR Manager\",\"salary\":85000},{\"department\":\"IT\",\"id\":2,\"name\":\"Emma Watson\",\"position\":\"Software Developer\",\"salary\":95000},{\"department\":\"Marketing\",\"id\":3,\"name\":\"Will Smith\",\"position\":\"Marketing Manager\",\"salary\":78000}]}"
+]

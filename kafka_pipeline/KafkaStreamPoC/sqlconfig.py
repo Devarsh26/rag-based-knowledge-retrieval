@@ -10,19 +10,22 @@ cursor.execute('''
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         file_name TEXT NOT NULL,
         data TEXT NOT NULL,
-        received_timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        creation_timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        last_modified_timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        chunked BOOLEAN DEFAULT FALSE
     )
 ''')
 
 # Create 'unstructured_data' table (for Word/PDF)
 cursor.execute('''
     CREATE TABLE IF NOT EXISTS unstructured_data (
-        metadata_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
         file_name TEXT NOT NULL,
         file_path TEXT NOT NULL,
         size INTEGER,
         creation_timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-        last_modified_timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        last_modified_timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        chunked BOOLEAN DEFAULT FALSE
     )
 ''')
 
@@ -31,7 +34,7 @@ cursor.execute('''
     CREATE TABLE IF NOT EXISTS vector_store (
         chunk_id TEXT PRIMARY KEY,
         original_doc_id TEXT NOT NULL,
-        section_title TEXT,
+        original_doc_name TEXT NOT NULL,
         chunk_text TEXT NOT NULL,
         embedding_vector BLOB NOT NULL  -- Stores FAISS vector
     )

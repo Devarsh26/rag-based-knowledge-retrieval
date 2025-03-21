@@ -19,11 +19,11 @@ conn = sqlite3.connect("kafka_messages.db")
 cursor = conn.cursor()
 
 # Retrieve JSON/XML Data (Structured)
-cursor.execute("SELECT id, file_name, data, received_timestamp FROM structured_data")
+cursor.execute("SELECT id, file_name, data, creation_timestamp, last_modified_timestamp FROM structured_data")
 structured_files_retrieved = 0
 
 for row in cursor.fetchall():
-    file_id, file_name, data, received_timestamp = row
+    file_id, file_name, data, creation_timestamp, last_modified_timestamp = row
     file_path = os.path.join(structured_folder, file_name)
 
     # Save structured data as JSON

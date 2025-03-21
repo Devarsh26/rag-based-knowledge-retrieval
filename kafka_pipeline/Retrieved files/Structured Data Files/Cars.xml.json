@@ -1,0 +1,5 @@
+[
+    "{\"brand\":\"Toyota\",\"car_id\":\"A001\",\"model\":\"Camry\",\"year\":2022}",
+    "{\"brand\":\"Tesla\",\"car_id\":\"B002\",\"model\":\"Model S\",\"year\":2023}",
+    "{\"brand\":\"Ford\",\"car_id\":\"C003\",\"model\":\"Mustang\",\"year\":2021}"
+]

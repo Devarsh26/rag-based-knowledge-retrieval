@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<cars><car><car_id>A001</car_id><brand>Toyota</brand><model>Camry</model><year>2022</year></car><car><car_id>B002</car_id><brand>Tesla</brand><model>Model S</model><year>2023</year></car><car><car_id>C003</car_id><brand>Ford</brand><model>Mustang</model><year>2021</year></car></cars>

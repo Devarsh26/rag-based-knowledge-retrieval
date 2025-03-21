@@ -1,0 +1,22 @@
+{
+    "courses": [
+        {
+            "course_id": "CS101",
+            "title": "Introduction to Programming",
+            "instructor": "Dr. Brown",
+            "credits": 3
+        },
+        {
+            "course_id": "MATH202",
+            "title": "Calculus II",
+            "instructor": "Prof. Green",
+            "credits": 4
+        },
+        {
+            "course_id": "PHYS301",
+            "title": "Quantum Physics",
+            "instructor": "Dr. White",
+            "credits": 3
+        }
+    ]
+}

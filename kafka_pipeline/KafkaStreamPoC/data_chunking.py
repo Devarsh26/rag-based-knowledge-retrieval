@@ -36,7 +36,7 @@ hf_embeddings = HFEmbeddingWrapper()
 def fetch_structured_data():
     conn = sqlite3.connect("kafka_messages.db")
     cursor = conn.cursor()
-    cursor.execute("SELECT id, file_name, data FROM structured_data")
+    cursor.execute("SELECT id, file_name, data FROM structured_data where chunked = FALSE")
     structured_data = cursor.fetchall()
     conn.close()
     return structured_data
@@ -45,7 +45,7 @@ def fetch_structured_data():
 def fetch_unstructured_data():
     conn = sqlite3.connect("kafka_messages.db")
     cursor = conn.cursor()
-    cursor.execute("SELECT file_name, file_path FROM unstructured_data")
+    cursor.execute("SELECT id, file_name, file_path FROM unstructured_data where chunked = FALSE")
     unstructured_data = cursor.fetchall()
     conn.close()
     return unstructured_data
@@ -80,7 +80,7 @@ def semantic_chunk_text(text):
     return splitter.create_documents([text])
 
 # Function to process chunks and store in SQLite
-def process_chunks(chunks, original_doc_id):
+def process_chunks(chunks, original_doc_id, original_doc_name):
     conn = sqlite3.connect("kafka_messages.db")
     cursor = conn.cursor()
 
@@ -93,8 +93,8 @@ def process_chunks(chunks, original_doc_id):
 
 
         # Store FAISS vector in SQLite
-        cursor.execute("INSERT INTO vector_store (chunk_id, original_doc_id, section_title, chunk_text, embedding_vector) VALUES (?, ?, ?, ?, ?)",
-                       (chunk_id, original_doc_id, chunk.metadata.get("title", "No Title"), chunk.page_content, vector.tobytes()))
+        cursor.execute("INSERT INTO vector_store (chunk_id, original_doc_id, original_doc_name, chunk_text, embedding_vector) VALUES (?, ?, ?, ?, ?)",
+                       (chunk_id, original_doc_id, original_doc_name, chunk.page_content, vector.tobytes()))
         conn.commit()
 
         # Add vector to FAISS index
@@ -106,7 +106,7 @@ def process_chunks(chunks, original_doc_id):
 def process_structured_data():
     structured_files = fetch_structured_data()
     
-    for file_id, file_name, data in tqdm(structured_files, desc="Processing Structured Data"):
+    for id, file_name, data in tqdm(structured_files, desc="Processing Structured Data"):
         parsed_data = json.loads(data)
         if isinstance(parsed_data, dict):
             combined_text = " ".join(str(value) for value in parsed_data.values())
@@ -117,13 +117,19 @@ def process_structured_data():
 
 
         chunks = semantic_chunk_text(combined_text)
-        process_chunks(chunks, file_id)
+        process_chunks(chunks, id, file_name)
+
+        conn = sqlite3.connect("kafka_messages.db")
+        cursor = conn.cursor()
+        cursor.execute("UPDATE structured_data SET chunked = TRUE WHERE file_name = ?", (file_name,))
+        conn.commit()
+
 
 # Function to process unstructured data
 def process_unstructured_data():
     unstructured_files = fetch_unstructured_data()
 
-    for file_name, file_path in tqdm(unstructured_files, desc="Processing Unstructured Data"):
+    for id, file_name, file_path in tqdm(unstructured_files, desc="Processing Unstructured Data"):
         if not os.path.exists(file_path):
             print(f"Warning: File {file_path} not found. Skipping...")
             continue
@@ -135,7 +141,13 @@ def process_unstructured_data():
             continue
 
         chunks = semantic_chunk_text(text)
-        process_chunks(chunks, file_name)
+        process_chunks(chunks, id, file_name)
+
+        conn = sqlite3.connect("kafka_messages.db")
+        cursor = conn.cursor()
+        cursor.execute("UPDATE unstructured_data SET chunked = TRUE WHERE file_name = ?", (file_name,))
+        conn.commit()
+
 
 # Process both structured and unstructured data
 process_structured_data()
