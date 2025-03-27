@@ -12,7 +12,11 @@ from sentence_transformers import SentenceTransformer
 
 # Initialize FAISS Index
 vector_dimension = 384  # Hugging Face embedding dimension (all-MiniLM-L6-v2)
-index = faiss.IndexFlatL2(vector_dimension)
+flat_index = faiss.IndexFlatL2(vector_dimension)
+index = faiss.IndexIDMap(flat_index)
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # current script folder
+INDEX_PATH = os.path.join(BASE_DIR, "faiss_index.index")
 
 # Load Hugging Face Sentence-Transformer Model
 model = SentenceTransformer('all-MiniLM-L6-v2')
@@ -36,7 +40,7 @@ hf_embeddings = HFEmbeddingWrapper()
 def fetch_structured_data():
     conn = sqlite3.connect("kafka_messages.db")
     cursor = conn.cursor()
-    cursor.execute("SELECT id, file_name, data FROM structured_data where chunked = FALSE")
+    cursor.execute("SELECT id, file_name, data, file_path FROM structured_data where chunked = FALSE")
     structured_data = cursor.fetchall()
     conn.close()
     return structured_data
@@ -79,8 +83,11 @@ def semantic_chunk_text(text):
     splitter = SemanticChunker(hf_embeddings, breakpoint_threshold_type="percentile")
     return splitter.create_documents([text])
 
+def generate_faiss_id(uuid_str):
+    return uuid.UUID(uuid_str).int & (1<<63)-1
+
 # Function to process chunks and store in SQLite
-def process_chunks(chunks, original_doc_id, original_doc_name):
+def process_chunks(chunks, original_doc_id, original_doc_name, file_path):
     conn = sqlite3.connect("kafka_messages.db")
     cursor = conn.cursor()
 
@@ -91,14 +98,17 @@ def process_chunks(chunks, original_doc_id, original_doc_name):
         vector = model.encode(chunk_text)
         vector_bytes = np.array(vector, dtype=np.float32).tobytes()  # Ensure proper byte conversion
 
+        faiss_id = generate_faiss_id(chunk_id)
 
         # Store FAISS vector in SQLite
-        cursor.execute("INSERT INTO vector_store (chunk_id, original_doc_id, original_doc_name, chunk_text, embedding_vector) VALUES (?, ?, ?, ?, ?)",
-                       (chunk_id, original_doc_id, original_doc_name, chunk.page_content, vector.tobytes()))
+        cursor.execute("INSERT INTO vector_store (chunk_id, faiss_id, original_doc_id, original_doc_name, file_path, chunk_text, embedding_vector) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                       (chunk_id, str(faiss_id), original_doc_id, original_doc_name, file_path, chunk.page_content, vector.tobytes()))
         conn.commit()
 
         # Add vector to FAISS index
-        index.add(np.array([vector], dtype=np.float32))
+        index.add_with_ids(np.array([vector], dtype=np.float32), np.array([faiss_id], dtype=np.int64))
+
+    faiss.write_index(index, INDEX_PATH)
 
     conn.close()
 
@@ -106,7 +116,7 @@ def process_chunks(chunks, original_doc_id, original_doc_name):
 def process_structured_data():
     structured_files = fetch_structured_data()
     
-    for id, file_name, data in tqdm(structured_files, desc="Processing Structured Data"):
+    for id, file_name, data, file_path in tqdm(structured_files, desc="Processing Structured Data"):
         parsed_data = json.loads(data)
         if isinstance(parsed_data, dict):
             combined_text = " ".join(str(value) for value in parsed_data.values())
@@ -117,7 +127,7 @@ def process_structured_data():
 
 
         chunks = semantic_chunk_text(combined_text)
-        process_chunks(chunks, id, file_name)
+        process_chunks(chunks, id, file_name, file_path)
 
         conn = sqlite3.connect("kafka_messages.db")
         cursor = conn.cursor()
@@ -141,7 +151,7 @@ def process_unstructured_data():
             continue
 
         chunks = semantic_chunk_text(text)
-        process_chunks(chunks, id, file_name)
+        process_chunks(chunks, id, file_name, file_path)
 
         conn = sqlite3.connect("kafka_messages.db")
         cursor = conn.cursor()

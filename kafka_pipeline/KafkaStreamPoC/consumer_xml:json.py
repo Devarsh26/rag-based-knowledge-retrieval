@@ -25,8 +25,8 @@ print(f"Listening for messages on {TOPIC}...")
 # Consume messages from Kafka
 for message in consumer:
     data = message.value
-
     file_name = data["file_name"]
+    file_path = data["file_path"]
     structured_data = json.dumps(data["data"])
     creation_timestamp = data.get("creation_timestamp", None)
     last_modified_timestamp = data.get("last_modified_timestamp", None)
@@ -52,9 +52,9 @@ for message in consumer:
 
     # Insert new file or new version if modified
     cursor.execute('''
-        INSERT INTO structured_data (file_name, data, creation_timestamp, last_modified_timestamp)
-        VALUES (?, ?, ?, ?)
-    ''', (file_name, structured_data, creation_timestamp, last_modified_timestamp))
+        INSERT INTO structured_data (file_name, file_path, data, creation_timestamp, last_modified_timestamp)
+        VALUES (?, ?, ?, ?, ?)
+    ''', (file_name, file_path, structured_data, creation_timestamp, last_modified_timestamp))
 
     conn.commit()
     print(f"✅ Stored structured data for {file_name} in database.")

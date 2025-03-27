@@ -100,6 +100,7 @@ for file_name in os.listdir(folder_path):
                     structured_data = df.toJSON().collect()
                     kafka_message = {
                         "file_name": file_name,
+                        "file_path": file_path,
                         "data": structured_data,
                         "creation_timestamp": creation_timestamp,
                         "last_modified_timestamp": last_modified_timestamp
