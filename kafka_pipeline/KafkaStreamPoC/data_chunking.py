@@ -10,7 +10,7 @@ from tqdm import tqdm
 from langchain_experimental.text_splitter import SemanticChunker
 from sentence_transformers import SentenceTransformer
 
-# Initialize FAISS Index
+# Initialized FAISS Index
 vector_dimension = 384  # Hugging Face embedding dimension (all-MiniLM-L6-v2)
 flat_index = faiss.IndexFlatL2(vector_dimension)
 index = faiss.IndexIDMap(flat_index)
@@ -18,7 +18,7 @@ index = faiss.IndexIDMap(flat_index)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # current script folder
 INDEX_PATH = os.path.join(BASE_DIR, "faiss_index.index")
 
-# Load Hugging Face Sentence-Transformer Model
+# Loadeds HuggingFace Sentence Transformer model
 model = SentenceTransformer('all-MiniLM-L6-v2')
 
 
@@ -86,7 +86,7 @@ def semantic_chunk_text(text):
 def generate_faiss_id(uuid_str):
     return uuid.UUID(uuid_str).int & (1<<63)-1
 
-# Function to process chunks and store in SQLite
+# Function to process chunks and store in SQLite database
 def process_chunks(chunks, original_doc_id, original_doc_name, file_path):
     conn = sqlite3.connect("kafka_messages.db")
     cursor = conn.cursor()
@@ -96,7 +96,7 @@ def process_chunks(chunks, original_doc_id, original_doc_name, file_path):
         chunk_text = chunk.page_content if hasattr(chunk, "page_content") else str(chunk)
 
         vector = model.encode(chunk_text)
-        vector_bytes = np.array(vector, dtype=np.float32).tobytes()  # Ensure proper byte conversion
+        vector_bytes = np.array(vector, dtype=np.float32).tobytes()
 
         faiss_id = generate_faiss_id(chunk_id)
 
@@ -118,21 +118,46 @@ def process_structured_data():
     
     for id, file_name, data, file_path in tqdm(structured_files, desc="Processing Structured Data"):
         parsed_data = json.loads(data)
+
+        combined_text = ""
+
         if isinstance(parsed_data, dict):
-            combined_text = " ".join(str(value) for value in parsed_data.values())
+            # Excel case: dict of sheets
+            if all(isinstance(v, list) for v in parsed_data.values()):
+                for sheet_name, rows in parsed_data.items():
+                    sheet_text = ""
+                    for row in rows:
+                        if isinstance(row, dict):
+                            clean_row = {k.strip(): v for k, v in row.items() if k and "Unnamed" not in k and v != ""}
+                            if clean_row:
+                                sheet_text += json.dumps(clean_row) + "\n"
+                    if sheet_text:
+                        chunks = semantic_chunk_text(sheet_text)
+                        process_chunks(chunks, id, f"{file_name} - {sheet_name}", file_path)
+                continue
+            else:
+                combined_text = " ".join(str(value) for value in parsed_data.values())
+
         elif isinstance(parsed_data, list):
-            combined_text = " ".join(str(item) for item in parsed_data)  # Handle lists properly
+            if all(isinstance(item, dict) for item in parsed_data):
+                combined_text = "\n".join(json.dumps(item) for item in parsed_data)
+            elif all(isinstance(item, str) and item.strip().startswith("{") for item in parsed_data):
+                combined_text = "\n".join(parsed_data)
+            else:
+                combined_text = " ".join(str(item) for item in parsed_data)
+
         else:
-            combined_text = str(parsed_data)  # Fallback for other data types
+            combined_text = str(parsed_data)
 
-
-        chunks = semantic_chunk_text(combined_text)
-        process_chunks(chunks, id, file_name, file_path)
+        if combined_text:
+            chunks = semantic_chunk_text(combined_text)
+            process_chunks(chunks, id, file_name, file_path)
 
         conn = sqlite3.connect("kafka_messages.db")
         cursor = conn.cursor()
         cursor.execute("UPDATE structured_data SET chunked = TRUE WHERE file_name = ?", (file_name,))
         conn.commit()
+
 
 
 # Function to process unstructured data

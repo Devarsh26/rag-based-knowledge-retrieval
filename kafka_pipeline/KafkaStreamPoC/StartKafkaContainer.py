@@ -1,31 +1,55 @@
-import docker
+#!/usr/bin/env python3
+import subprocess
+import sys
 
-client = docker.from_env()
+COMPOSE_FILE = "docker-compose.yml"
 
-# Pull Kafka and Zookeeper images
-client.images.pull("bitnami/zookeeper")
-client.images.pull("bitnami/kafka")
+def run(cmd):
+    try:
+        subprocess.check_call(cmd)
+    except subprocess.CalledProcessError:
+        sys.exit("✗ Failed: " + " ".join(cmd))
 
-# Start Zookeeper
-zookeeper_container = client.containers.run(
-    "bitnami/zookeeper",
-    name="zookeeper",
-    detach=True,
-    environment={"ALLOW_ANONYMOUS_LOGIN": "yes"},
-    ports={"2181/tcp": 2181}
-)
+def containers_exist():
+    # returns True if compose has any containers (even stopped ones)
+    res = subprocess.run(
+        ["docker-compose", "-f", COMPOSE_FILE, "ps", "-q"],
+        capture_output=True, text=True
+    )
+    return bool(res.stdout.strip())
 
-# Start Kafka
-kafka_container = client.containers.run(
-    "bitnami/kafka",
-    name="kafka",
-    detach=True,
-    environment={
-        "KAFKA_CFG_ZOOKEEPER_CONNECT": "zookeeper:2181",
-        "ALLOW_PLAINTEXT_LISTENER": "yes"
-    },
-    ports={"9092/tcp": 9092},
-    links=["zookeeper"]
-)
+def create_and_start():
+    print("First time setup: creating & starting containers")
+    run(["docker-compose", "-f", COMPOSE_FILE, "up", "-d"])
 
-print("Kafka and Zookeeper are running!")
+def start():
+    if not containers_exist():
+        create_and_start()
+    else:
+        print("Starting existing containers")
+        run(["docker-compose", "-f", COMPOSE_FILE, "start"])
+
+def stop():
+    print("Stopping containers (they remain on disk)")
+    run(["docker-compose", "-f", COMPOSE_FILE, "stop"])
+
+def status():
+    run(["docker-compose", "-f", COMPOSE_FILE, "ps"])
+
+def usage():
+    print("Usage: python StartKafkaContainer.py [start|stop|status]")
+    sys.exit(1)
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        usage()
+
+    cmd = sys.argv[1].lower()
+    if cmd == "start":
+        start()
+    elif cmd == "stop":
+        stop()
+    elif cmd == "status":
+        status()
+    else:
+        usage()

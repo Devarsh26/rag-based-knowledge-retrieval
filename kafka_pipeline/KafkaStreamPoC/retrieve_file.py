@@ -4,12 +4,12 @@ import json
 import shutil
 import datetime
 
-# Define output folders
+# Defined output folders
 retrieved_folder = os.path.expanduser("~/Documents/University of Washington/Coursework/Capstone/Capstone_Q5/KakfaStreamPOC/Retrieved files")
 structured_folder = os.path.join(retrieved_folder, "Structured Data Files")
 unstructured_folder = os.path.join(retrieved_folder, "Unstructured Data Files")
 
-# Ensure the folders exist
+# Check the folders status
 for folder in [retrieved_folder, structured_folder, unstructured_folder]:
     if not os.path.exists(folder):
         os.makedirs(folder)
@@ -30,7 +30,7 @@ for row in cursor.fetchall():
     with open(f"{file_path}.json", "w") as file:
         json.dump(json.loads(data), file, indent=4)
 
-    print(f"Retrieved structured data: {file_name}.json (Saved at: {file_path}.json)")
+    print(f"Retrieved structured file {file_name}.json (Saved at: {file_path}.json)")
     structured_files_retrieved += 1
 
 # Retrieve Word/PDF Files (Unstructured)
@@ -54,10 +54,10 @@ for row in cursor.fetchall():
         # Preserve original timestamps
         os.utime(destination_path, (creation_time.timestamp(), modified_time.timestamp()))
 
-        print(f"Retrieved: {file_name} (Copied to: {destination_path})")
+        print(f"Retrieved unstructured file {file_name} (Saved at: {destination_path})")
         unstructured_files_retrieved += 1
     else:
-        print(f"Warning: Original file '{file_path}' not found. Skipping...")
+        print(f"Warning: File at '{file_path}' not found. Skipping...")
 
 conn.close()
 

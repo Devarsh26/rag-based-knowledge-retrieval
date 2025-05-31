@@ -13,9 +13,9 @@ conn.close()
 
 # Display the retrieved chunks
 if not chunks:
-    print("⚠️ No chunks found in the database!")
+    print(" !! No chunks found in the database!")
 else:
-    print(f"✅ Retrieved {len(chunks)} chunks from SQLite:")
+    print(f"+ Retrieved {len(chunks)} chunks from SQLite:")
     print("="*50)
     for chunk_id, original_doc_id, original_doc_name, file_path, chunk_text in chunks:
         print(f"📄 Chunk ID: {chunk_id}")

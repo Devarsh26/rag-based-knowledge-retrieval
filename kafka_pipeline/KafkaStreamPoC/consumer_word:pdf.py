@@ -2,11 +2,11 @@ from kafka import KafkaConsumer
 import sqlite3
 import json
 
-# Kafka Consumer Configuration
+# Kafka consumer setup
 KAFKA_BROKER = "localhost:9092"
 TOPIC = "unstructured-data-topic"
 
-# Create Kafka consumer
+# Created Kafka consumer
 consumer = KafkaConsumer(
     TOPIC,
     bootstrap_servers=KAFKA_BROKER,
@@ -25,7 +25,6 @@ print(f"Listening for messages on {TOPIC}...")
 # Consume messages from Kafka
 for message in consumer:
     data = message.value
-
     file_name = data["file_name"]
     file_path = data["file_path"]
     file_size = data["size"]
@@ -39,16 +38,16 @@ for message in consumer:
     if result:
         existing_timestamp = result[0]
         if existing_timestamp == last_modified_timestamp:
-            print(f"⏩ Skipping unchanged file: {file_name}")
+            print(f"/ Skipping unchanged file: {file_name}.")
             continue  # Skip file if unchanged
         else:
             # Delete old chunks for that file
             cursor.execute("DELETE FROM vector_store WHERE original_doc_name = ?", (file_name,))
-            print(f"🗑️ Deleted old chunks for {file_name} from vector_store.")
+            print(f"- Deleted old chunks for {file_name} from vector_store table.")
 
             # Delete the old metadata
             cursor.execute("DELETE FROM unstructured_data WHERE file_name = ?", (file_name,))
-            print(f"🗑️ Deleted old version of {file_name} from unstructured_data.")
+            print(f"- Deleted old version of {file_name} from unstructured_data table.")
 
     # Insert new file or new version if modified
     cursor.execute('''
@@ -57,6 +56,6 @@ for message in consumer:
     ''', (file_name, file_path, file_size, creation_timestamp, last_modified_timestamp))
 
     conn.commit()
-    print(f"✅ Stored unstructured data file path and metadata for {file_name} in database.")
+    print(f"+ Stored unstructured file's file path & metadata for {file_name} in database.")
 
 conn.close()

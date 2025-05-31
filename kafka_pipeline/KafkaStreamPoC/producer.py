@@ -5,30 +5,31 @@ import datetime
 import sqlite3
 import re
 import subprocess
+import pandas as pd
 from pyspark.sql import SparkSession
 
 # Kafka producer setup
 KAFKA_BROKER = 'localhost:9092'
-producer = KafkaProducer(bootstrap_servers=KAFKA_BROKER, value_serializer=lambda m: json.dumps(m).encode('utf-8'))
+producer = KafkaProducer(bootstrap_servers=KAFKA_BROKER, value_serializer=lambda m: json.dumps(m, default=str).encode('utf-8'))
 #172.18.0.3
 
 # Kafka Topics
 STRUCTURED_TOPIC = 'structured-data-topic'  # For JSON/XML
 UNSTRUCTURED_TOPIC = 'unstructured-data-topic'  # For Word/PDF
 
-# Define the path to the Docs
+# File path to the docs
 folder_path = os.path.expanduser('~/Documents/University of Washington/Coursework/Capstone/Capstone_Q5/KakfaStreamPOC/Trial files')
 
 # Connect to SQLite
 conn = sqlite3.connect("kafka_messages.db")
 cursor = conn.cursor()
 
-# Ensure the folder exists
+# Checking if the folder exists
 if not os.path.exists(folder_path):
     print(f"Error: Folder '{folder_path}' not found.")
     exit()
 
-# Initialize PySpark for JSON/XML batch processing
+# Initializing PySpark for JSON/XML batch processing
 spark = SparkSession.builder \
     .appName("BatchProcessing") \
     .config("spark.jars.packages", "com.databricks:spark-xml_2.12:0.15.0") \
@@ -67,17 +68,17 @@ for file_name in os.listdir(folder_path):
         last_modified_timestamp = datetime.datetime.fromtimestamp(os.path.getmtime(file_path)).isoformat()
 
         # Check for duplicates and skip unchanged files
-        if file_extension in ['.json', '.xml']:
+        if file_extension in ['.json', '.xml', '.xlsx', '.csv']:
             if structured_file_is_unchanged(file_name, last_modified_timestamp):
-                print(f"⏩ Skipping unchanged structured file: {file_name}")
+                print(f"/ Skipping unchanged structured file: {file_name}")
                 continue
-        elif file_extension in ['.docx', '.pdf']:
+        elif file_extension in ['.docx', '.pdf', '.png', '.jpg', '.jpeg']:
             if unstructured_file_is_unchanged(file_name, last_modified_timestamp):
-                print(f"⏩ Skipping unchanged unstructured file: {file_name}")
+                print(f"/ Skipping unchanged unstructured file: {file_name}")
                 continue
 
         # Process JSON/XML with PySpark
-        if file_extension in ['.json', '.xml']:
+        if file_extension in ['.json', '.xml', '.xlsx', '.csv']:
             df = None
             try:
                 if file_extension == ".json":
@@ -91,9 +92,58 @@ for file_name in os.listdir(folder_path):
                                 break  # Exit loop after finding the first valid XML tag
 
                     
-                    # Extract actual row elements (not just the root tag)
+                    # Extract actual row elements
                     df = spark.read.format("com.databricks.spark.xml").option("rowTag", root_tag[:-1]).load(file_path)  # Fix: Use singular form of root tag
 
+                elif file_extension == ".xlsx":
+                    # Read all sheets from Excel file
+                    xls = pd.read_excel(file_path, sheet_name=None)
+                    
+                    # Structure the data by sheet
+                    sheet_data = {}
+                    for sheet_name, df in xls.items():
+                        # Handle NaN values and convert to records
+                        records = df.fillna("").to_dict(orient="records")
+                        # Include sheet structure 
+                        sheet_data[sheet_name] = records
+                    
+                    kafka_message = {
+                        "file_name": file_name,
+                        "file_path": file_path,
+                        "file_type": "excel",
+                        "data": sheet_data,  # Sheet wise data
+                        "creation_timestamp": creation_timestamp,
+                        "last_modified_timestamp": last_modified_timestamp
+                    }
+                    producer.send(STRUCTURED_TOPIC, value=kafka_message)
+                    producer.flush()
+                    print(f"+ Sent Excel file data from {file_name} to {STRUCTURED_TOPIC}.")
+                    continue
+
+                elif file_extension == ".csv":
+                    # Read CSV into pandas Dataframe
+                    df = pd.read_csv(file_path)
+                    
+                    # Convert to records and handle NaN values
+                    records = df.fillna("").to_dict(orient="records")
+                    
+                    # Structure similar to Excel but with a single sheet
+                    csv_data = {
+                        "main": records  # Single "sheet" named "main"
+                    }
+                    
+                    kafka_message = {
+                        "file_name": file_name,
+                        "file_path": file_path,
+                        "file_type": "csv",
+                        "data": csv_data,
+                        "creation_timestamp": creation_timestamp,
+                        "last_modified_timestamp": last_modified_timestamp
+                    }
+                    producer.send(STRUCTURED_TOPIC, value=kafka_message)
+                    producer.flush()
+                    print(f"+ Sent CSV file data from {file_name} to {STRUCTURED_TOPIC}.")
+                    continue
 
 
                 if df and not df.isEmpty():
@@ -108,10 +158,10 @@ for file_name in os.listdir(folder_path):
 
                     producer.send(STRUCTURED_TOPIC, value=kafka_message)
                     producer.flush()
-                    print(f"✅ Sent structured data from {file_name} to Kafka.")
+                    print(f"+ Sent structured data from {file_name} to {STRUCTURED_TOPIC}.")
 
             except Exception as e:
-                print(f"❌ Error processing {file_name}: {e}")
+                print(f" !!! Error processing {file_name}: {e}")
 
         # Process Word/PDF
         elif file_extension in ['.docx', '.pdf']:
@@ -125,6 +175,6 @@ for file_name in os.listdir(folder_path):
 
             producer.send(UNSTRUCTURED_TOPIC, value=kafka_message)
             producer.flush()
-            print(f"✅ Sent unstructured data file {file_name} to `{UNSTRUCTURED_TOPIC}`")
+            print(f"+ Sent unstructured data file {file_name} to {UNSTRUCTURED_TOPIC}.")
 
-print("✅ All files processed successfully!")
+print(" +++ All files processed successfully!")

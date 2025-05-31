@@ -1,11 +1,19 @@
-pip install kafka-python
-Pip install pyspark
-pip install faiss-cpu 
-pip install sentence-transformers
-pip install langchain
-pip install langchain-experimental
-pip install textract
-pip install pdfplumber
-pip install tqdm
-pip install numpy
-pip install streamlit
+kafka-python
+pyspark
+faiss-cpu 
+sentence-transformers
+langchain
+langchain-experimental
+textract==1.6.3
+pdfplumber
+tqdm
+numpy
+streamlit
+pandas
+openpyxl
+pytesseract
+pillow
+torchvision
+transformers
+docker
+

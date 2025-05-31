@@ -26,7 +26,7 @@ def load_faiss_index():
     return faiss.read_index(INDEX_PATH)
 
 # --- Query FAISS ---
-def search_chunks(query, embedder, index, k=1):
+def search_chunks(query, embedder, index, k=3):
     query_vec = embedder.encode([query]).astype("float32")
     distances, indices = index.search(query_vec, k)
     return indices[0]
@@ -65,15 +65,21 @@ def generate_answer(context_chunks, query):
     response = chain.run({"context": context, "question": query})
     return response
 
-# --- Streamlit UI ---
+# Streamlit UI
 st.title("📚 Buddy AI")
-st.markdown("I can help answer any question you have based on the company data and policies. Powered by FAISS + Ollama + Mistral.")
+st.markdown("I can help answer any question you have based on the company data and policies. Powered by LangChain + HuggingFace + FAISS + Ollama + Mistral.")
 
-# --- Chat box for user input ---
+for role, msg in st.session_state.chat_history:
+    with st.chat_message(role.lower()):
+        st.markdown(msg)
+
+
+
+# Chat box for user input
 user_query = st.chat_input("Ask a question...")
 
 
-# --- Run when user submits a question ---
+# Run when user submits a question
 if user_query:
     embedder = load_embedder()
     index = load_faiss_index()
@@ -89,7 +95,7 @@ if user_query:
         answer = generate_answer(chunks, user_query)
         
         # Format the assistant message with sources included
-        answer_with_sources = f"{answer}\n\n**📄 Source Documents:**\n"
+        answer_with_sources = f"{answer}\n\n** Source Documents:**\n"
         seen_docs = set()
         for chunk in chunks:
             doc = chunk["doc"]
@@ -107,11 +113,5 @@ if user_query:
         # Display assistant message
         with st.chat_message("assistant"):
             st.markdown(answer_with_sources)
-
-
-
-for role, msg in st.session_state.chat_history:
-    with st.chat_message(role.lower()):
-        st.markdown(msg)
 
 

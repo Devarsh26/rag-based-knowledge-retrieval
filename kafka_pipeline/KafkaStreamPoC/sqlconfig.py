@@ -4,7 +4,7 @@ import sqlite3
 conn = sqlite3.connect("kafka_messages.db")
 cursor = conn.cursor()
 
-# Create 'structured_data' table (for JSON/XML)
+# To create 'structured_data' table (for JSON/XML)
 cursor.execute('''
     CREATE TABLE IF NOT EXISTS structured_data (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -17,7 +17,7 @@ cursor.execute('''
     )
 ''')
 
-# Create 'unstructured_data' table (for Word/PDF)
+# To create 'unstructured_data' table (for Word/PDF)
 cursor.execute('''
     CREATE TABLE IF NOT EXISTS unstructured_data (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -30,7 +30,7 @@ cursor.execute('''
     )
 ''')
 
-# Create 'vector_store' table (Persistent FAISS storage)
+# To create 'vector_store' table
 cursor.execute('''
     CREATE TABLE IF NOT EXISTS vector_store (
         chunk_id TEXT PRIMARY KEY,
@@ -46,4 +46,4 @@ cursor.execute('''
 conn.commit()
 conn.close()
 
-print("Database tables created successfully!")
+print("Database tables created successfully.")

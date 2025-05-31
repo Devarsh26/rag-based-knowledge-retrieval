@@ -2,11 +2,11 @@ from kafka import KafkaConsumer
 import sqlite3
 import json
 
-# Kafka Consumer Configuration
+# Kafka consumer setup
 KAFKA_BROKER = "localhost:9092"
 TOPIC = "structured-data-topic"
 
-# Create Kafka consumer
+# Created Kafka consumer
 consumer = KafkaConsumer(
     TOPIC,
     bootstrap_servers=KAFKA_BROKER,
@@ -38,16 +38,16 @@ for message in consumer:
     if result:
         existing_timestamp = result[0]
         if existing_timestamp == last_modified_timestamp:
-            print(f"⏩ Skipping unchanged file: {file_name}")
+            print(f"/ Skipping unchanged file: {file_name}")
             continue  # Skip file if unchanged
         else:
             # Delete old chunks for that file
             cursor.execute("DELETE FROM vector_store WHERE original_doc_name = ?", (file_name,))
-            print(f"🗑️ Deleted old chunks for {file_name} from vector_store.")
+            print(f"- Deleted old chunks for {file_name} from vector_store.")
 
             # Delete the old metadata
             cursor.execute("DELETE FROM structured_data WHERE file_name = ?", (file_name,))
-            print(f"🗑️ Deleted old version of {file_name} from structured_data.")
+            print(f"- Deleted old version of {file_name} from structured_data.")
 
 
     # Insert new file or new version if modified
@@ -57,6 +57,6 @@ for message in consumer:
     ''', (file_name, file_path, structured_data, creation_timestamp, last_modified_timestamp))
 
     conn.commit()
-    print(f"✅ Stored structured data for {file_name} in database.")
+    print(f"+ Stored structured file data for {file_name} in database.")
 
 conn.close()
